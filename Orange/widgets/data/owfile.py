@@ -33,7 +33,7 @@ class OWFile(widget.OWWidget):
         doc="Attribute-valued data set read from the input file.")]
 
     want_main_area = False
-
+    want_report = True
     recent_files = Setting(["(none)"])
     new_variables = Setting(False)
 
@@ -192,7 +192,7 @@ class OWFile(widget.OWWidget):
             self.warnings.setText(err_value)
 
         if data is None:
-            self.dataReport = None
+            self.data = None
         else:
             domain = data.domain
             self.infoa.setText(
@@ -219,18 +219,21 @@ class OWFile(widget.OWWidget):
             else:
                 data.name = file_name
 
-            self.dataReport = self.prepareDataReport(data)
+            self.data = data
         self.send("Data", data)
 
-    def sendReport(self):
-        dataReport = getattr(self, "dataReport", None)
-        if dataReport:
-            self.reportSettings(
-                "File",
-                [("File name", self.loaded_file),
-                 ("Format", self.formats.get(os.path.splitext(
-                     self.loaded_file)[1], "unknown format"))])
-            self.reportData(self.dataReport)
+    def send_report(self):
+        self.report_settings("File", [("File name", self.loaded_file),
+                                      ("Format", self._get_ext_name(
+                                          self.loaded_file))])
+        self.report_data("Input data", self.data)
+
+    def _get_ext_name(self, filename):
+        try:
+            return FileFormats.names[os.path.splitext(filename)[1]]
+        except KeyError:
+            return "unknown format"
+
 
 if __name__ == "__main__":
     a = QtGui.QApplication(sys.argv)
