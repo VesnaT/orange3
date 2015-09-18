@@ -146,6 +146,7 @@ class OWFile(widget.OWWidget):
     #: List[RecentPath]
     recent_paths = Setting([])
 
+    want_report = True
     new_variables = Setting(False)
 
     dlgFormats = (
@@ -157,7 +158,7 @@ class OWFile(widget.OWWidget):
     def __init__(self):
         super().__init__()
         self.domain = None
-
+        self.data = None
         self.loaded_file = ""
         self._relocate_recent_files()
 
@@ -337,7 +338,7 @@ class OWFile(widget.OWWidget):
             self.warnings.setText(err_value)
 
         if data is None:
-            self.dataReport = None
+            self.data = None
         else:
             domain = data.domain
             self.infoa.setText(
@@ -364,18 +365,30 @@ class OWFile(widget.OWWidget):
             else:
                 data.name = file_name
 
-            self.dataReport = self.prepareDataReport(data)
+            self.data = data
         self.send("Data", data)
 
-    def sendReport(self):
-        dataReport = getattr(self, "dataReport", None)
-        if dataReport:
-            self.reportSettings(
-                "File",
-                [("File name", self.loaded_file),
-                 ("Format", self.formats.get(os.path.splitext(
-                     self.loaded_file)[1], "unknown format"))])
-            self.reportData(self.dataReport)
+    def send_report(self):
+        if self.data is None:
+            self.report_raw("File", "No file.")
+            return
+
+        from os.path import expanduser
+        home = expanduser("~")
+        if self.loaded_file.startswith(home):
+            name = "~/" + self.loaded_file[len(home):]
+        else:
+            name = self.loaded_file
+        self.report_settings("File", [("File name", name),
+                                      ("Format", self._get_ext_name(name))])
+        self.report_data("Data", self.data)
+
+    def _get_ext_name(self, filename):
+        try:
+            return FileFormats.names[os.path.splitext(filename)[1]]
+        except KeyError:
+            return "unknown format"
+
 
     def workflowEnvChanged(self, key, value, oldvalue):
         if key == "basedir":
