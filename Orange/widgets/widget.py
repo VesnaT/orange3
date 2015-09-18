@@ -251,14 +251,14 @@ class OWWidget(QDialog, metaclass=WidgetMetaClass):
         self.send_report()
 
     def send_report(self):
-        if hasattr(self, "data"):
+        if hasattr(self, "data") and isinstance(self.data, Table):
             self.report_data("Data", self.data)
         if hasattr(self, "canvas"):
             self.report_plot(self.canvas)
         if hasattr(self, "box_scene"):
             self.report_plot(self.box_scene)
         if hasattr(self, "plot"):
-            self.report_plot(self.plot)
+            self.report_plot("", self.plot)
 
     def report_settings(self, name, items):
         from Orange.canvas.report.owreport import OWReport
@@ -268,16 +268,20 @@ class OWWidget(QDialog, metaclass=WidgetMetaClass):
         self.report_html += OWReport.get_html_paragraph(items)
 
     def report_data(self, name, data):
-        if isinstance(data, Table):
-            attr_names = [a.name for a in data.domain.attributes]
-            meta_names = [m.name for m in data.domain.metas]
-            class_names = [c.name for c in data.domain.class_vars]
-            items = [("Examples", len(data)),
-                     ("Features", ", ".join(attr_names))]
+        if data is None:
+            self.report_raw("No data.")
+        else:
+            attr_names = ", ".join(a.name for a in data.domain.attributes)
+            meta_names = ", ".join(m.name for m in data.domain.metas)
+            class_names = ", ".join(c.name for c in data.domain.class_vars)
+            items = [
+                ("Data instances", len(data)),
+                ("Features", attr_names[:1000] +
+                 "..." * (len(attr_names) > 1000))]
             if meta_names:
-                items.append(("Meta attributes", ", ".join(meta_names)))
+                items.append(("Meta attributes", meta_names))
             if class_names:
-                items.append(("Class", ", ".join(class_names)))
+                items.append(("Target", class_names))
             self.report_settings(name, items)
 
     def report_plot(self, name, plot):
