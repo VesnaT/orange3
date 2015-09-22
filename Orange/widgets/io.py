@@ -1,10 +1,6 @@
 from Orange.data.io import FileFormats
 from PyQt4 import QtGui, QtCore, QtSvg
 
-from pyqtgraph.graphicsItems.GraphicsWidget import GraphicsWidget
-from pyqtgraph.exporters.SVGExporter import SVGExporter
-from pyqtgraph.exporters.ImageExporter import ImageExporter
-
 
 class ImgFormat:
     @staticmethod
@@ -29,6 +25,8 @@ class ImgFormat:
 
     @classmethod
     def write_image(cls, filename, scene):
+        from pyqtgraph.graphicsItems.GraphicsWidget import GraphicsWidget
+
         if isinstance(scene, GraphicsWidget):
             exporter = cls._get_exporter()
             exp = exporter(scene)
@@ -72,6 +70,7 @@ class PngFormat(ImgFormat):
 
     @staticmethod
     def _get_exporter():
+        from pyqtgraph.exporters.ImageExporter import ImageExporter
         return ImageExporter
 
 
@@ -94,4 +93,5 @@ class SvgFormat(ImgFormat):
 
     @staticmethod
     def _get_exporter():
+        from pyqtgraph.exporters.SVGExporter import SVGExporter
         return SVGExporter
