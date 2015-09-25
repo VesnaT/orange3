@@ -23,14 +23,18 @@ class ImgFormat:
         raise NotImplementedError(
             "Descendants of ImgFormat must override method _get_exporter")
 
+    @staticmethod
+    def _export(self, exporter, filename):
+        raise NotImplementedError(
+            "Descendants of ImgFormat must override method _export")
+
     @classmethod
     def write_image(cls, filename, scene):
         from pyqtgraph.graphicsItems.GraphicsWidget import GraphicsWidget
 
         if isinstance(scene, GraphicsWidget):
             exporter = cls._get_exporter()
-            exp = exporter(scene)
-            exp.export(filename)
+            cls._export(exporter(scene), filename)
         else:
             source = scene.itemsBoundingRect().adjusted(-15, -15, 15, 15)
             buffer = cls._get_buffer(source.size(), filename)
@@ -73,6 +77,11 @@ class PngFormat(ImgFormat):
         from pyqtgraph.exporters.ImageExporter import ImageExporter
         return ImageExporter
 
+    @staticmethod
+    def _export(exporter, filename):
+        buffer = exporter.export(toBytes=True)
+        buffer.save(filename, "png")
+
 
 @FileFormats.register("Scalable Vector Graphics", ".svg")
 class SvgFormat(ImgFormat):
@@ -95,3 +104,7 @@ class SvgFormat(ImgFormat):
     def _get_exporter():
         from pyqtgraph.exporters.SVGExporter import SVGExporter
         return SVGExporter
+
+    @staticmethod
+    def _export(exporter, filename):
+        exporter.export(filename)
