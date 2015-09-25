@@ -92,7 +92,6 @@ class OWWidget(QDialog, Report, metaclass=WidgetMetaClass):
     want_graph = False
     show_save_graph = True
     want_status_bar = False
-    want_report = False
 
     save_position = True
     resizing_enabled = True
@@ -233,7 +232,7 @@ class OWWidget(QDialog, Report, metaclass=WidgetMetaClass):
         if not self.resizing_enabled:
             self.layout().setSizeConstraint(QVBoxLayout.SetFixedSize)
 
-        if self.want_report:
+        if hasattr(self, "send_report"):
             self.report_button_background = gui.widgetBox(
                 self.leftWidgetPart,
                 orientation="horizontal", margin=4

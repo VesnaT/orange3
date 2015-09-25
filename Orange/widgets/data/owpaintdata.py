@@ -810,7 +810,6 @@ class OWPaintData(widget.OWWidget):
     density = Setting(7)
 
     want_graph = True
-    want_report = True
 
     def __init__(self, parent=None):
         super().__init__(parent)

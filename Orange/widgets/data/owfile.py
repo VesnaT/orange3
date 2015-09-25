@@ -146,7 +146,6 @@ class OWFile(widget.OWWidget):
     #: List[RecentPath]
     recent_paths = Setting([])
 
-    want_report = True
     new_variables = Setting(False)
 
     dlgFormats = (

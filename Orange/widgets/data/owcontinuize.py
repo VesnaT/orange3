@@ -55,8 +55,6 @@ class OWContinuize(widget.OWWidget):
 
     value_ranges = ["from -1 to 1", "from 0 to 1"]
 
-    want_report = True
-
     def __init__(self, parent=None):
         widget.OWWidget.__init__(self, parent)
 

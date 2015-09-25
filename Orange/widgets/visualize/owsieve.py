@@ -36,7 +36,6 @@ class OWSieveDiagram(OWWidget):
     settingsList = ["showLines", "showCases", "showInColor"]
 
     want_graph = True
-    want_report = True
 
     def __init__(self,parent=None, signalManager = None):
         OWWidget.__init__(self, parent, signalManager, "Sieve diagram", True)

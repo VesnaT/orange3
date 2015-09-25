@@ -367,8 +367,6 @@ class OWDataTable(widget.OWWidget):
     selected_schema_index = Setting(0)
     color_by_class = Setting(True)
 
-    want_report = True
-
     def __init__(self, parent=None):
         super().__init__(parent)
 

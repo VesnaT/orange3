@@ -126,7 +126,6 @@ class OWMosaicDisplay(OWWidget):
     _cellspace = 4
 
     want_graph = True
-    want_report = True
 
     def __init__(self, parent=None):
         super().__init__(self, parent)
