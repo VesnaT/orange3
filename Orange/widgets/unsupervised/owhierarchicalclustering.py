@@ -13,8 +13,7 @@ from PyQt4.QtGui import (
     QGraphicsScene, QGraphicsView, QTransform, QPainterPath,
     QColor, QBrush, QPen, QFontMetrics, QGridLayout, QFormLayout,
     QSizePolicy, QGraphicsSimpleTextItem, QPolygonF, QPainterPathStroker,
-    QGraphicsPolygonItem, QGraphicsLayoutItem
-)
+    QGraphicsPolygonItem, QGraphicsLayoutItem)
 
 from PyQt4.QtCore import Qt,  QSize, QSizeF, QPointF, QRectF, QLineF, QEvent
 from PyQt4.QtCore import pyqtSignal as Signal
@@ -876,6 +875,8 @@ class OWHierarchicalClustering(widget.OWWidget):
         self.dendrogram.geometryChanged.connect(self._dendrogram_geom_changed)
         self._set_cut_line_visible(self.selection_method == 1)
         self.graphButton.clicked.connect(self.save_graph)
+
+        self.inline_graph_report()
 
     def set_distances(self, matrix):
         self.error(0)
