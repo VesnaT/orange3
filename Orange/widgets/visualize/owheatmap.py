@@ -177,6 +177,7 @@ class OWHeatMap(widget.OWWidget):
 
     NoSorting, Clustering, OrderedClustering = 0, 1, 2
     NoPosition, PositionTop, PositionBottom = 0, 1, 2
+    sort_opts = ["No sorting", "Clustering", "Clustering with leaf ordering"]
 
     gamma = settings.Setting(0)
     threshold_low = settings.Setting(0.0)
@@ -256,18 +257,12 @@ class OWHeatMap(widget.OWWidget):
         sortbox = gui.widgetBox(self.controlArea, "Sorting")
         # For attributes
         gui.comboBox(sortbox, self, "sort_columns",
-                     items=["No sorting",
-                            "Clustering",
-                            "Clustering with leaf ordering"],
-                     label='Columns',
+                     items=self.sort_opts, label='Columns',
                      callback=self.update_sorting_attributes)
 
         # For examples
         gui.comboBox(sortbox, self, "sort_rows",
-                     items=["No sorting",
-                            "Clustering",
-                            "Clustering with leaf ordering"],
-                     label='Rows',
+                     items=self.sort_opts, label='Rows',
                      callback=self.update_sorting_examples)
 
         box = gui.widgetBox(self.controlArea, 'Annotation && Legends')
@@ -303,6 +298,7 @@ class OWHeatMap(widget.OWWidget):
 
         gui.rubber(self.controlArea)
         gui.auto_commit(self.controlArea, self, "auto_commit", "Commit")
+        self.inline_graph_report()
 
         # Scene with heatmap
         self.heatmap_scene = self.scene = HeatmapScene(parent=self)
@@ -1078,6 +1074,16 @@ class OWHeatMap(widget.OWWidget):
         save_img = OWSave(parent=self, data=self.scene,
                           file_formats=FileFormats.img_writers)
         save_img.exec_()
+
+    def send_report(self):
+        self.report_items((
+            ("Columns", self.sort_opts[self.sort_columns].lower()),
+            ("Rows", self.sort_opts[self.sort_rows].lower()),
+            ("Row annotation",
+             self.annotation_index > 0 and
+             self.annotation_vars[self.annotation_index])
+        ))
+        self.report_plot(self.heatmap_scene)
 
 
 class GraphicsWidget(QtGui.QGraphicsWidget):
