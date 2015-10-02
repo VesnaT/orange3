@@ -3,8 +3,7 @@ import time
 from collections import OrderedDict
 from itertools import chain
 from PyQt4.QtCore import Qt, QAbstractItemModel, QByteArray, QBuffer, QIODevice
-from PyQt4.QtGui import QGraphicsScene, QStandardItemModel
-from Orange.data import Table
+from PyQt4.QtGui import QGraphicsScene, QStandardItemModel, QColor
 from Orange.widgets.io import PngFormat
 
 
@@ -30,28 +29,37 @@ class Report:
         self.send_report()
         self.report_html += '</div>\n\n'
 
-    def report_items(self, name, items, order=None, exclude=None):
+    @staticmethod
+    def _fix_args(name, items):
+        if items is None:
+            return "", name
+        else:
+            return name, items
+
+    def report_items(self, name, items=None):
+        name, items = self._fix_args(name, items)
         self.report_name(name)
-        self.report_html += render_items(items, order, exclude)
+        self.report_html += render_items(items)
 
     def report_name(self, name):
         if name != "":
             self.report_html += get_html_subsection(name)
 
-    def report_data(self, name, data, order=None, exclude=None):
-        self.report_items(name, describe_data(data),
-                          order=order, exclude=exclude)
+    def report_data(self, name, data=None):
+        name, data = self._fix_args(name, data)
+        self.report_items(name, describe_data(data))
 
-    def report_domain(self, name, domain, order=None, exclude=None):
-        self.report_items(name, describe_domain(domain),
-                          order=order, exclude=exclude)
+    def report_domain(self, name, domain=None):
+        name, domain = self._fix_args(name, domain)
+        self.report_items(name, describe_domain(domain))
 
-    def report_data_brief(self, name, data, order=None, exclude=None):
-        self.report_items(name, describe_data_brief(data),
-                          order=order, exclude=exclude)
+    def report_data_brief(self, name, data=None):
+        name, data = self._fix_args(name, data)
+        self.report_items(name, describe_data_brief(data))
 
-    def report_plot(self, name, plot):
-        from pyqtgraph import PlotWidget, PlotItem
+    def report_plot(self, name, plot=None):
+        name, plot = self._fix_args(name, plot)
+        from pyqtgraph import PlotWidget, PlotItem, GraphicsWidget
         self.report_name(name)
         if isinstance(plot, QGraphicsScene):
             self.report_html += get_html_img(plot)
@@ -59,21 +67,28 @@ class Report:
             self.report_html += get_html_img(plot)
         elif isinstance(plot, PlotWidget):
             self.report_html += get_html_img(plot.plotItem)
+        elif isinstance(plot, GraphicsWidget):
+            self.report_html += get_html_img(plot.scene())
 
     # noinspection PyBroadException
-    def report_table(self, name, table, header_rows=0, header_columns=0,
+    def report_table(self, name, table=None, header_rows=0, header_columns=0,
                      num_format=None):
+        name, table = self._fix_args(name, table)
         join = "".join
 
         def report_standard_model(model):
             content = ((model.item(row, col).data(Qt.DisplayRole)
                         for col in range(model.columnCount())
                         ) for row in range(model.rowCount()))
-            has_header = not table.isHeaderHidden()
+            has_header = not hasattr(table, "isHeaderHidden") or \
+                not table.isHeaderHidden()
             if has_header:
-                header = (model.horizontalHeaderItem(col).data(Qt.DisplayRole)
-                          for col in range(model.columnCount())),
-                content = chain(header, content)
+                try:
+                    header = (model.horizontalHeaderItem(col).data(Qt.DisplayRole)
+                              for col in range(model.columnCount())),
+                    content = chain(header, content)
+                except:
+                    has_header = False
             return report_list(content, header_rows + has_header)
 
         # noinspection PyBroadException
@@ -109,12 +124,15 @@ class Report:
             ) for rowi, row in enumerate(data))
 
         self.report_name(name)
-        try:
-            model = table.model()
-        except:
-            model = None
+        if isinstance(table, QAbstractItemModel):
+            model = table
+        else:
+            try:
+                model = table.model()
+            except:
+                model = None
         if isinstance(model, QStandardItemModel):
-            body = report_standard_model(table.model())
+            body = report_standard_model(model)
         elif isinstance(model, QAbstractItemModel):
             body = report_abstract_model(model)
         elif isinstance(table, list):
@@ -125,7 +143,9 @@ class Report:
             self.report_html += "<table>\n" + body + "</table>"
 
     # noinspection PyBroadException
-    def report_list(self, name, data, limit=1000):
+    def report_list(self, name, data=None, limit=1000):
+        name, data = self._fix_args(name, data)
+
         def report_abstract_model(model):
             content = (model.data(model.index(row, 0))
                        for row in range(model.rowCount()))
@@ -142,13 +162,16 @@ class Report:
             txt = ""
         self.report_html += txt
 
-    def report_paragraph(self, text):
+    def report_paragraph(self, name, text=None):
+        name, text = self._fix_args(name, text)
+        self.report_name(name)
         self.report_html += "<p>{}</p>".format(text)
 
     def report_caption(self, text):
         self.report_html += "<p class='caption'>{}</p>".format(text)
 
-    def report_raw(self, name, html):
+    def report_raw(self, name, html=None):
+        name, html = self._fix_args(name, html)
         self.report_name(name)
         self.report_html += html
 
@@ -302,35 +325,39 @@ def get_html_subsection(name):
     return "<h2>{}</h2>".format(name)
 
 
-def render_items(items, order=None, exclude=None):
+def render_items(items):
     """
-    Render a list of pairs or an (ordered) dictionary as a HTML list.
+    Render a sequence of pairs or an `OrderedDict` as a HTML list.
 
-    The function skips the items whose values are `None` or `False`, and items
-    that are listed in `exclude`.
+    The function skips the items whose values are `None` or `False`.
 
-    If argument `order` is present, the items must be given as dictionary.
-
-    :param items: a list or dictionary of items
-    :type items: dict or list
-    :param order: a list of item names to render
-    :type order: list
-    :param exclude: a list or set of items to exclude
-    :type exclude: list or set
+    :param items: a sequence of items
+    :type items: list or tuple or OrderedDict
     :return: rendered content
     :rtype: str
     """
-    if order is not None:
-        gen = ((key, items[key]) for key in order)
-    elif isinstance(items, dict):
-        gen = items.items()
-    else:
-        gen = items
+    if isinstance(items, dict):
+        items = items.items()
     return "<ul>" + "".join(
-        "<b>{}:</b> {}</br>".format(key, value) for key, value in gen
-        if (exclude is None or key not in exclude) and
-        (value is not None and value is not False)
-    ) + "</ul>"
+        "<b>{}:</b> {}</br>".format(key, value) for key, value in items
+        if value is not None and value is not False) + "</ul>"
+
+
+def render_items_vert(items):
+    """
+    Render a sequence of pairs or an `OrderedDict` as a comma-separated list.
+
+    The function skips the items whose values are `None` or `False`.
+
+    :param items: a sequence of items
+    :type items: list or tuple or OrderedDict
+    :return: rendered content
+    :rtype: str
+    """
+    if isinstance(items, dict):
+        items = items.items()
+    return ", ".join("<b>{}</b>: {}".format(key, value) for key, value in items
+                     if value is not None and value is not False)
 
 
 def get_html_img(scene):
@@ -382,9 +409,9 @@ def describe_data(data):
     :type data: Orange.data.Table
     :rtype: OrderedDict
     """
-    if data is None:
-        return OrderedDict()
     items = OrderedDict()
+    if data is None:
+        return items
     items["Data instances"] = len(data)
     items.update(describe_domain(data.domain))
     return items
@@ -402,9 +429,11 @@ def describe_domain_brief(domain):
     :type domain: Orange.data.Domain
     :rtype: OrderedDict
     """
-    items = OrderedDict([
-        ("Features", len(domain.attributes) or "None"),
-        ("Meta attributes", len(domain.metas) or "None")])
+    items = OrderedDict()
+    if domain is None:
+        return items
+    items["Features"] = len(domain.attributes) or "None"
+    items["Meta attributes"] = len(domain.metas) or "None"
     if domain.has_discrete_class:
         items["Target"] = "Class '{}'".format(domain.class_var.name)
     elif domain.has_continuous_class:
@@ -431,6 +460,27 @@ def describe_data_brief(data):
     :rtype: OrderedDict
     """
     items = OrderedDict()
+    if data is None:
+        return items
     items["Data instances"] = len(data)
     items.update(describe_domain_brief(data.domain))
     return items
+
+
+def list_legend(model, selected=None):
+    if hasattr(model, "model"):
+        model = model.model()
+    legend = ""
+    for row in range(model.rowCount()):
+        if selected is not None and row not in selected:
+            continue
+        index = model.index(row, 0)
+        icon = model.data(index, Qt.DecorationRole)
+        r, g, b, a = QColor(
+            icon.pixmap(12, 12).toImage().pixel(0, 0)).getRgb()
+        text = model.data(index, Qt.DisplayRole)
+        legend += '<span class="legend-square" ' \
+                  'style="background-color: rgb({}, {}, {})"></span>' \
+                  '<span class="legend-item">{}</span>'.format(
+                      r, g, b, text)
+    return legend

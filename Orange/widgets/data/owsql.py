@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import sys
 
 import psycopg2
@@ -10,6 +11,7 @@ from Orange.data.sql.table import SqlTable, LARGE_TABLE
 from Orange.widgets import widget, gui
 from Orange.widgets.settings import Setting
 from Orange.widgets.widget import OutputSignal
+from Orange.canvas import report
 
 
 class OWSql(widget.OWWidget):
@@ -45,6 +47,8 @@ class OWSql(widget.OWWidget):
         super(OWSql, self).__init__(parent=parent)
 
         self._connection = None
+        self.data_desc = None
+        self.database_desc = None
 
         vbox = gui.widgetBox(self.controlArea, "Server", addSpace=True)
         box = gui.widgetBox(vbox)
@@ -136,14 +140,20 @@ class OWSql(widget.OWWidget):
             )
             self.error(0)
             self.refresh_tables()
+            self.database_desc = OrderedDict((
+                ("Host", self.host), ("Port", self.port),
+                ("Database", self.database), ("User name", self.username)
+            ))
         except psycopg2.Error as err:
             self.error(0, str(err).split('\n')[0])
+            self.database_desc = self.data_desc = None
             self.tablecombo.clear()
 
 
     def refresh_tables(self):
         self.tablecombo.clear()
         if self._connection is None:
+            self.data_desc = None
             return
 
         cur = self._connection.cursor()
@@ -173,16 +183,27 @@ class OWSql(widget.OWWidget):
             return self.open_table()
         else:
             self.custom_sql.setVisible(True)
+            self.data_desc = None
+            self.database_desc["Table"] = "(None)"
             self.table = None
 
     def open_table(self):
         if self.tablecombo.currentIndex() <= 0:
+            if self.database_desc:
+                self.database_desc["Table"] = "(None)"
+            self.data_desc = None
             return
 
         if self.tablecombo.currentIndex() < self.tablecombo.count() - 1:
             self.table = self.tablecombo.currentText()
+            self.database_desc["Table"] = self.table
+            if "Query" in self.database_desc:
+                del self.database_desc["Query"]
         else:
             self.table = self.sqltext.toPlainText()
+            self.database_desc["Query"] = self.table
+            if "Table" in self.database_desc:
+                del self.database_desc["Table"]
 
         table = SqlTable(dict(host=self.host,
                               port=self.port,
@@ -221,7 +242,16 @@ class OWSql(widget.OWWidget):
             QApplication.restoreOverrideCursor()
             table.domain = domain
 
+        self.data_desc = report.describe_data(table)
         self.send("Data", table)
+
+    def send_report(self):
+        if not self.database_desc:
+            self.report_paragraph("No database connection.")
+            return
+        self.report_items("Database", self.database_desc)
+        if self.data_desc:
+            self.report_items("Data", self.data_desc)
 
 if __name__ == "__main__":
     import os

@@ -24,6 +24,7 @@ import Orange.projection
 import Orange.distance
 import Orange.misc
 from Orange.widgets.io import FileFormats
+from Orange.canvas import report
 
 
 def torgerson(distances, n_components=2):
@@ -301,15 +302,17 @@ class OWMDS(widget.OWWidget):
         self.controlArea.layout().addWidget(box)
 
         box = gui.widgetBox(self.controlArea, "Output")
-        gui.comboBox(box, self, "output_embedding_role",
-                     items=["Original features only",
-                            "Coordinates only",
-                            "Coordinates as features",
-                            "Coordinates as meta attributes"],
-                     callback=self._invalidate_output, addSpace=4)
+        self.output_combo = gui.comboBox(
+            box, self, "output_embedding_role",
+            items=["Original features only",
+                   "Coordinates only",
+                   "Coordinates as features",
+                   "Coordinates as meta attributes"],
+            callback=self._invalidate_output, addSpace=4)
         gui.auto_commit(box, self, "autocommit", "Send data",
                         checkbox_label="Send after any change",
                         box=None)
+        self.inline_graph_report()
 
         self.plot = pg.PlotWidget(background="w", enableMenu=False)
         self.plot.getPlotItem().hideAxis("bottom")
@@ -987,6 +990,20 @@ class OWMDS(widget.OWWidget):
         save_img = OWSave(parent=self, data=self.plot.plotItem,
                           file_formats=FileFormats.img_writers)
         save_img.exec_()
+
+    def send_report(self):
+        if self.data is None:
+            return
+        self.report_plot(self.plot)
+        caption = report.render_items_vert((
+            ("Color", self.color_value != "Same color" and self.color_value),
+            ("Shape", self.shape_value != "Same shape" and self.shape_value),
+            ("Size", self.size_value != "Same size" and self.size_value),
+            ("Labels", self.label_value != "No labels" and self.label_value)))
+        if caption:
+            self.report_caption(caption)
+        self.report_items((("Output", self.output_combo.currentText()),))
+
 
 
 def colors(data, variable, palette=None):

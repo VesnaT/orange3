@@ -5,6 +5,7 @@ A widget for defining (constructing) new features from values
 of other variables.
 
 """
+import ast
 import sys
 import re
 import copy
@@ -13,7 +14,7 @@ import functools
 import builtins
 import math
 import random
-from collections import namedtuple, Counter
+from collections import namedtuple, Counter, OrderedDict
 from itertools import chain
 from PyQt4 import QtGui, QtCore
 from PyQt4.QtGui import QSizePolicy
@@ -24,6 +25,7 @@ import Orange
 from Orange.widgets import widget, gui
 from Orange.widgets.settings import DomainContextHandler, Setting, ContextSetting
 from Orange.widgets.utils import itemmodels, vartype
+from Orange.canvas import report
 
 from .owpythonscript import PythonSyntaxHighlighter
 
@@ -574,8 +576,13 @@ class OWFeatureConstructor(widget.OWWidget):
 
         box.layout().addWidget(self.editorstack, 3)
 
-        gui.button(self.controlArea, self, "Commit", callback=self.apply,
-                   default=True)
+        box = gui.widgetBox(self.controlArea, orientation="horizontal")
+        box.layout().addWidget(self.report_button)
+        self.report_button.setMinimumWidth(180)
+        gui.rubber(box)
+        commit = gui.button(box, self, "Commit", callback=self.apply,
+                            default=True)
+        commit.setMinimumWidth(180)
 
     def setCurrentIndex(self, index):
         index = min(index, len(self.featuremodel) - 1)
@@ -704,6 +711,21 @@ class OWFeatureConstructor(widget.OWWidget):
             return
 
         self.send("Data", data)
+
+    def send_report(self):
+        items = OrderedDict()
+        for feature in self.featuremodel:
+            if isinstance(feature, DiscreteDescriptor):
+                items[feature.name] = "{} (discrete with values {}{})".format(
+                    feature.expression, feature.values,
+                    "; ordered" * feature.ordered)
+            elif isinstance(feature, ContinuousDescriptor):
+                items[feature.name] = "{} (numeric)".format(feature.expression)
+            else:
+                items[feature.name] = "{} (text)".format(feature.expression)
+        self.report_items(
+            report.plural("Constructed feature{s}", len(items)), items)
+
 
 
 import ast

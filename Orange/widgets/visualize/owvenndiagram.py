@@ -565,6 +565,9 @@ class OWVennDiagram(widget.OWWidget):
                           file_formats=FileFormats.img_writers)
         save_img.exec_()
 
+    def send_report(self):
+        self.report_plot(self.scene)
+
 
 def pairwise(iterable):
     """

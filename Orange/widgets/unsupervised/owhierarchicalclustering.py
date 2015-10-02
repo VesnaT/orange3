@@ -13,8 +13,7 @@ from PyQt4.QtGui import (
     QGraphicsScene, QGraphicsView, QTransform, QPainterPath,
     QColor, QBrush, QPen, QFontMetrics, QGridLayout, QFormLayout,
     QSizePolicy, QGraphicsSimpleTextItem, QPolygonF, QPainterPathStroker,
-    QGraphicsPolygonItem, QGraphicsLayoutItem
-)
+    QGraphicsPolygonItem, QGraphicsLayoutItem)
 
 from PyQt4.QtCore import Qt,  QSize, QSizeF, QPointF, QRectF, QLineF, QEvent
 from PyQt4.QtCore import pyqtSignal as Signal
@@ -693,6 +692,8 @@ class OWHierarchicalClustering(widget.OWWidget):
     #: Cluster variable domain role
     AttributeRole, ClassRole, MetaRole = 0, 1, 2
 
+    cluster_roles = ["Attribute", "Class variable", "Meta variable"]
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -779,9 +780,7 @@ class OWHierarchicalClustering(widget.OWWidget):
 
         cb = gui.comboBox(
             ibox, self, "cluster_role", callback=self._invalidate_output,
-            items=["Attribute",
-                   "Class variable",
-                   "Meta variable"]
+            items=self.cluster_roles
         )
         form = QFormLayout(
             fieldGrowthPolicy=QFormLayout.AllNonFixedFieldsGrow,
@@ -876,6 +875,8 @@ class OWHierarchicalClustering(widget.OWWidget):
         self.dendrogram.geometryChanged.connect(self._dendrogram_geom_changed)
         self._set_cut_line_visible(self.selection_method == 1)
         self.graphButton.clicked.connect(self.save_graph)
+
+        self.inline_graph_report()
 
     def set_distances(self, matrix):
         self.error(0)
@@ -1233,6 +1234,29 @@ class OWHierarchicalClustering(widget.OWWidget):
                           file_formats=FileFormats.img_writers)
         save_img.exec_()
 
+    def send_report(self):
+        annot = self.label_cb.currentText()
+        if self.annotation_idx <= 1:
+            annot = annot.lower()
+        if self.selection_method == 0:
+            sel = "manual"
+        elif self.selection_method == 1:
+            sel = "at {:.1f} of height".format(self.cut_ratio)
+        else:
+            sel = "top {} clusters".format(self.top_n)
+        self.report_items((
+            ("Linkage", LINKAGE[self.linkage].lower()),
+            ("Annotation", annot),
+            ("Prunning",
+             self.pruning != 0 and "{} levels".format(self.max_depth)),
+            ("Selection", sel),
+            ("Cluster ID in output",
+             self.append_clusters and
+             "{} (as {})".format(
+                 self.cluster_name,
+                 self.cluster_roles[self.cluster_role].lower()))
+        ))
+        self.report_plot(self.scene)
 
 class GraphicsSimpleTextList(QGraphicsWidget):
     """A simple text list widget."""
