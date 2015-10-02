@@ -181,7 +181,8 @@ class OWMosaicDisplay(OWWidget):
                                  # label="Variable {}".format(i),
                                  orientation="horizontal",
                                  callback=self.updateGraphAndPermList,
-                                 sendSelectedValue=True, valueType=str)
+                                 sendSelectedValue=True, valueType=str,
+                                 contentsLength=12)
 
             butt = gui.button(inbox, self, "", callback=self.orderAttributeValues,
                               tooltip="Change the order of attribute values")
@@ -335,6 +336,7 @@ class OWMosaicDisplay(OWWidget):
 
         self.closeContext()
         self.data = data
+        self.initCombos(self.data)
         self.bestPlacements = None
         self.manualAttributeValuesDict = {}
         self.attributeValuesDict = {}
@@ -366,7 +368,6 @@ class OWMosaicDisplay(OWWidget):
         else:
             self.interior_coloring = PEARSON
 
-        self.initCombos(self.data)
         self.openContext(self.data)
 
         # if we first received subset data
@@ -1025,17 +1026,16 @@ class OWMosaicDisplay(OWWidget):
     # ########################################
     # cell/example selection
     def sendSelectedData(self):
-        if self.data is None:
-            return None
-
-        attributes = self.getShownAttributeList()
-        row_indices = []
-        for i, row in enumerate(self.data):
-            for condition in self.selectionConditions:
-                if len([attr for attr, val in zip(attributes, condition)
-                        if row[attr] == val]) == len(condition):
-                    row_indices.append(i)
-        selected_data = Table.from_table_rows(self.data, row_indices)
+        selected_data = None
+        if self.data and not isinstance(self.data, SqlTable):
+            attributes = self.getShownAttributeList()
+            row_indices = []
+            for i, row in enumerate(self.data):
+                for condition in self.selectionConditions:
+                    if len([attr for attr, val in zip(attributes, condition)
+                            if row[attr] == val]) == len(condition):
+                        row_indices.append(i)
+            selected_data = Table.from_table_rows(self.data, row_indices)
         self.send("Selected Data", selected_data)
 
     # add a new rectangle. update the graph and see which mosaics does it intersect. add this mosaics to the recentlyAdded list

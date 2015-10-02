@@ -138,15 +138,15 @@ class OWTestLearners(widget.OWWidget):
     settingsHandler = settings.ClassValuesContextHandler()
 
     #: Resampling/testing types
-    KFold, LeaveOneOut, Bootstrap, TestOnTrain, TestOnTest = 0, 1, 2, 3, 4
+    KFold, LeaveOneOut, ShuffleSplit, TestOnTrain, TestOnTest = 0, 1, 2, 3, 4
 
     #: Selected resampling type
     resampling = settings.Setting(0)
     #: Number of folds for K-fold cross validation
     k_folds = settings.Setting(10)
-    #: Number of repeats for bootstrap sampling
+    #: Number of repeats for ShuffleSplit sampling
     n_repeat = settings.Setting(10)
-    #: Bootstrap sampling p
+    #: ShuffleSplit sampling p
     sample_p = settings.Setting(75)
 
     TARGET_AVERAGE = "(Average over classes)"
@@ -170,26 +170,30 @@ class OWTestLearners(widget.OWWidget):
         gui.appendRadioButton(rbox, "Cross validation")
         ibox = gui.indentedBox(rbox)
         gui.spin(ibox, self, "k_folds", 2, 50, label="Number of folds:",
-                 callback=self.kfold_changed, callbackOnReturn=True)
+                 callback=self.kfold_changed)
         gui.appendRadioButton(rbox, "Leave one out")
         gui.appendRadioButton(rbox, "Random sampling")
         ibox = gui.indentedBox(rbox)
         gui.spin(ibox, self, "n_repeat", 2, 50, label="Repeat train/test",
-                 callback=self.bootstrap_changed, callbackOnReturn=True)
+                 callback=self.shuffle_split_changed)
         gui.widgetLabel(ibox, "Relative training set size:")
-        slider = gui.hSlider(ibox, self, "sample_p", minValue=1, maxValue=100,
-                             ticks=20, vertical=False, labelFormat="%d %%",
-                             callback=self.bootstrap_changed)
-        slider.setTracking(False)
+        gui.hSlider(ibox, self, "sample_p", minValue=1, maxValue=99,
+                    ticks=20, vertical=False, labelFormat="%d %%",
+                    callback=self.shuffle_split_changed)
 
         gui.appendRadioButton(rbox, "Test on train data")
         gui.appendRadioButton(rbox, "Test on test data")
+
+        rbox.layout().addSpacing(5)
+        self.apply_button = gui.button(
+            rbox, self, "Apply", callback=self.apply, default=True)
 
         self.cbox = gui.widgetBox(self.controlArea, "Target class")
         self.class_selection_combo = gui.comboBox(
             self.cbox, self, "class_selection", items=[],
             sendSelectedValue=True, valueType=str,
-            callback=self._on_target_class_changed)
+            callback=self._on_target_class_changed,
+            contentsLength=8)
 
         gui.rubber(self.controlArea)
 
@@ -270,13 +274,12 @@ class OWTestLearners(widget.OWWidget):
         self.resampling = OWTestLearners.KFold
         self._param_changed()
 
-    def bootstrap_changed(self):
-        self.resampling = OWTestLearners.Bootstrap
+    def shuffle_split_changed(self):
+        self.resampling = OWTestLearners.ShuffleSplit
         self._param_changed()
 
     def _param_changed(self):
         self._invalidate()
-        self.apply()
 
     def _update_results(self):
         """
@@ -325,11 +328,12 @@ class OWTestLearners(widget.OWWidget):
         elif self.resampling == OWTestLearners.LeaveOneOut:
             results = Orange.evaluation.LeaveOneOut(
                 self.data, learners, **common_args)
-        elif self.resampling == OWTestLearners.Bootstrap:
-            results = Orange.evaluation.Bootstrap(
+        elif self.resampling == OWTestLearners.ShuffleSplit:
+            train_size = self.sample_p / 100
+            results = Orange.evaluation.ShuffleSplit(
                 self.data, learners, n_resamples=self.n_repeat,
-                p=self.sample_p / 100, random_state=rstate,
-                **common_args)
+                train_size=train_size, test_size=None,
+                random_state=rstate, **common_args)
         elif self.resampling == OWTestLearners.TestOnTrain:
             results = Orange.evaluation.TestOnTrainingData(
                 self.data, learners, **common_args)
@@ -495,7 +499,10 @@ class OWTestLearners(widget.OWWidget):
                         item.setData(None, Qt.DisplayRole)
                         item.setData(None, Qt.ToolTipRole)
 
+        self.apply_button.setEnabled(True)
+
     def apply(self):
+        self.apply_button.setEnabled(False)
         self._update_header()
         # Update the view to display the model names
         self._update_stats_model()

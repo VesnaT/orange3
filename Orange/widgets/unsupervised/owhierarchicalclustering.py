@@ -386,6 +386,9 @@ class DendrogramWidget(QGraphicsWidget):
     def is_selected(self, item):
         return item in self._selection
 
+    def is_included(self, item):
+        return self._selected_super_item(item) is not None
+
     def select_item(self, item, state):
         """Set the `item`s selection state to `select_state`
 
@@ -608,17 +611,28 @@ class DendrogramWidget(QGraphicsWidget):
                     event.button() == Qt.LeftButton:
 
                 is_selected = self.is_selected(obj)
+                is_included = self.is_included(obj)
                 current_selection = list(self._selection)
 
                 if self.__selectionMode == DendrogramWidget.SingleSelection:
                     if event.modifiers() & Qt.ControlModifier:
                         self.set_selected_items(
                             [obj] if not is_selected else [])
+                    elif event.modifiers() & Qt.AltModifier:
+                        self.set_selected_items([])
+                    elif event.modifiers() & Qt.ShiftModifier:
+                        if not is_included:
+                            self.set_selected_items([obj])
                     elif current_selection != [obj]:
                         self.set_selected_items([obj])
                 elif self.__selectionMode == DendrogramWidget.ExtendedSelection:
                     if event.modifiers() & Qt.ControlModifier:
-                        self.select_item(obj, not self.is_selected(obj))
+                        self.select_item(obj, not is_selected)
+                    elif event.modifiers() & Qt.AltModifier:
+                        self.select_item(self._selected_super_item(obj), False)
+                    elif event.modifiers() & Qt.ShiftModifier:
+                        if not is_included:
+                            self.select_item(obj, True)
                     elif current_selection != [obj]:
                         self.set_selected_items([obj])
 
@@ -626,7 +640,7 @@ class DendrogramWidget(QGraphicsWidget):
                     self.selectionEdited.emit()
                 self.itemClicked.emit(obj)
                 event.accept()
-                return True
+            return True
 
         if event.type() == QEvent.GraphicsSceneHoverLeave:
             self._set_hover_item(None)
@@ -710,7 +724,8 @@ class OWHierarchicalClustering(widget.OWWidget):
 
         box = gui.widgetBox(self.controlArea, "Annotation")
         self.label_cb = gui.comboBox(
-            box, self, "annotation_idx", callback=self._update_labels)
+            box, self, "annotation_idx", callback=self._update_labels,
+            contentsLength=12)
 
         self.label_cb.setModel(itemmodels.VariableListModel())
         self.label_cb.model()[:] = ["None", "Enumeration"]
