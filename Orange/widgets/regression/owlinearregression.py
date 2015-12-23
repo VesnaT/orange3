@@ -55,33 +55,34 @@ class OWLinearRegression(OWProvidesLearner, widget.OWWidget):
         box = gui.widgetBox(self.controlArea, "Learner/Predictor Name")
         gui.lineEdit(box, self, "learner_name")
 
-        box = gui.widgetBox(self.controlArea, "Regularization")
-        box = gui.radioButtons(
+        box = gui.widgetBox(self.controlArea, "Regularization",
+                            orientation="horizontal")
+        gui.radioButtons(
             box, self, "reg_type",
             btnLabels=["No regularization", "Ridge regression",
                        "Lasso regression", "Elastic net regression"],
             callback=self._reg_type_changed)
 
-        gui.separator(box)
+        gui.separator(box, 20, 20)
         self.alpha_box = box2 = gui.widgetBox(box, margin=0)
         gui.widgetLabel(box2, "Regularization strength")
         self.alpha_slider = gui.hSlider(
             box2, self, "alpha_index",
             minValue=0, maxValue=len(self.alphas) - 1,
             callback=self._alpha_changed, createLabel=False)
-        box3 = gui.widgetBox(box, orientation="horizontal")
+        box3 = gui.widgetBox(box2, orientation="horizontal")
         box3.layout().setAlignment(Qt.AlignCenter)
         self.alpha_label = gui.widgetLabel(box3, "")
         self._set_alpha_label()
 
-        gui.separator(box)
-        box4 = gui.widgetBox(box, margin=0)
+        gui.separator(box2, 10, 10)
+        box4 = gui.widgetBox(box2, margin=0)
         gui.widgetLabel(box4, "Elastic net mixing parameter")
         self.l1_ratio_slider = gui.hSlider(
             box4, self, "l1_ratio", minValue=0.01, maxValue=1,
             intOnly=False, ticks=0.1, createLabel=False,
             step=0.01, callback=self._l1_ratio_changed)
-        box5 = gui.widgetBox(box, orientation="horizontal")
+        box5 = gui.widgetBox(box4, orientation="horizontal")
         box5.layout().setAlignment(Qt.AlignCenter)
         self.l1_ratio_label = gui.widgetLabel(box5, "")
         self._set_l1_ratio_label()
