@@ -196,6 +196,9 @@ class Report:
         name, table = self._fix_args(name, table)
         join = "".join
 
+        def try_fmtnum(s):
+            return try_(lambda: num_format.format(float(s)), s)
+
         def data(item):
             return item and item.data(Qt.DisplayRole) or ""
 
@@ -216,7 +219,7 @@ class Report:
                     if row is None or col is None:
                         return model.headerData(col if row is None else row,
                                                 orientation, role)
-                    return model.data(model.index(row, col), role)
+                    return try_fmtnum(model.data(model.index(row, col), role))
 
                 selected = (view.selectionModel().isSelected(model.index(row, col))
                             if view and row is not None and col is not None else False)
@@ -271,22 +274,12 @@ class Report:
 
             return ''.join(stream)
 
-        if num_format:
-            def fmtnum(s):
-                try:
-                    return num_format.format(float(s))
-                except:
-                    return s
-        else:
-            def fmtnum(s):
-                return s
-
         def report_list(data,
                         header_rows=header_rows, header_columns=header_columns):
             cells = ["<td>{}</td>", "<th>{}</th>"]
             return join("  <tr>\n    {}</tr>\n".format(
                 join(cells[rowi < header_rows or coli < header_columns]
-                     .format(fmtnum(elm)) for coli, elm in enumerate(row))
+                     .format(try_fmtnum(elm)) for coli, elm in enumerate(row))
             ) for rowi, row in enumerate(data))
 
         self.report_name(name)
