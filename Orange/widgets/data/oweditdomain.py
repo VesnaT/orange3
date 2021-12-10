@@ -26,7 +26,8 @@ from AnyQt.QtWidgets import (
     QDialog, QRadioButton, QGridLayout, QLabel, QSpinBox, QDoubleSpinBox,
     QAbstractItemView, QMenu
 )
-from AnyQt.QtGui import QStandardItemModel, QStandardItem, QKeySequence, QIcon
+from AnyQt.QtGui import (QStandardItemModel, QStandardItem, QKeySequence,
+                         QIcon, QPalette, QColor)
 from AnyQt.QtCore import (
     Qt, QSize, QModelIndex, QAbstractItemModel, QPersistentModelIndex, QRect,
     QPoint,
@@ -1587,6 +1588,16 @@ class VariableEditDelegate(QStyledItemDelegate):
         if transform:
             # mark as changed (maybe also change color, add text, ...)
             option.font.setItalic(True)
+            rename = [t for t in transform if isinstance(t, Rename)]
+            if rename:
+                for var in index.model()[:]:
+                    if isinstance(var, DataVectorTypes):
+                        var = var.vtype
+                    if var.name.strip() == rename[0].name.strip():
+                        red = QColor(Qt.red)
+                        option.palette.setColor(QPalette.Text, red)
+                        option.palette.setColor(QPalette.HighlightedText, red)
+                        break
 
 
 # Item model for edited variables (Variable). Define a display role to be the
@@ -2027,11 +2038,24 @@ class OWEditDomain(widget.OWWidget):
         assert 0 <= self.selected_index <= len(self.variables_model)
         editor = self._editor
         var, transform = editor.get_data()
+        self._check_duplicate_names(var, transform)
         model = self.variables_model
         midx = model.index(self.selected_index, 0)
         model.setData(midx, transform, TransformRole)
         self._store_transform(var, transform)
         self._invalidate()
+
+    def _check_duplicate_names(self, var: Variable, transform: List[Transform]):
+        if not self.data:
+            return
+
+        domain = self.data.domain
+        names = {var.name for var in domain.variables + domain.metas}
+        self.Error.duplicate_var_name.clear()
+        for trans in transform:
+            if isinstance(trans, Rename):
+                if trans.name in names and var.name != trans.name:
+                    self.Error.duplicate_var_name()
 
     def _store_transform(self, var, transform):
         # type: (Variable, List[Transform]) -> None
